@@ -1,86 +1,107 @@
-// login Elements
-const login = document.querySelector(".login");
+// login elements
+const login = document.querySelector(".login")
+const loginForm = login.querySelector(".login__form")
+const loginInput = login.querySelector(".login__input")
 
-// Buscar um elemento dentro de uma classe especifica, nesse caso "login"
-const loginForm = login.querySelector(".login_form");
-const loginInput = login.querySelector(".login_input");
+// chat elements
+const chat = document.querySelector(".chat")
+const chatForm = chat.querySelector(".chat__form")
+const chatInput = chat.querySelector(".chat__input")
+const chatMessages = chat.querySelector(".chat__messages")
 
-// Chat Elements
-const chat = document.querySelector(".chat");
-const chatForm = login.querySelector(".chat_form");
-const chatInput = login.querySelector(".chat_input");
-
-// Array de cores
 const colors = [
-  "aquamarine",
-  "aqua",
-  "blue",
-  "bisque",
-  "brown",
-  "darkgreen",
-  "darkred",
-  "gold",
-];
+    "cadetblue",
+    "darkgoldenrod",
+    "cornflowerblue",
+    "darkkhaki",
+    "hotpink",
+    "gold"
+]
 
-// Salvando informações do usuario.
-const user = { id: "", name: "", color: "" };
+const user = { id: "", name: "", color: "" }
 
-let websocket;
+let websocket
 
-// função para sortear as cores aleatorias.
+const createMessageSelfElement = (content) => {
+    const div = document.createElement("div")
+
+    div.classList.add("message--self")
+    div.innerHTML = content
+
+    return div
+}
+
+const createMessageOtherElement = (content, sender, senderColor) => {
+    const div = document.createElement("div")
+    const span = document.createElement("span")
+
+    div.classList.add("message--other")
+
+    span.classList.add("message--sender")
+    span.style.color = senderColor
+
+    div.appendChild(span)
+
+    span.innerHTML = sender
+    div.innerHTML += content
+
+    return div
+}
+
 const getRandomColor = () => {
-  // o tamanho do array com .length e arredondando pra baixo com Math.floor
-  const randomIndex = Math.floor(Math.random() * colors.length);
+    const randomIndex = Math.floor(Math.random() * colors.length)
+    return colors[randomIndex]
+}
 
-  return colors[randomIndex];
-};
+const scrollScreen = () => {
+    window.scrollTo({
+        top: document.body.scrollHeight,
+        behavior: "smooth"
+    })
+}
 
-// Responsavel por gerar o balão e colocar na tela
 const processMessage = ({ data }) => {
-  const { userId, userName, userColor, content} = JSON.parse(data)  
-};
+    const { userId, userName, userColor, content } = JSON.parse(data)
+
+    const message =
+        userId == user.id
+            ? createMessageSelfElement(content)
+            : createMessageOtherElement(content, userName, userColor)
+
+    chatMessages.appendChild(message)
+
+    scrollScreen()
+}
 
 const handleLogin = (event) => {
-  event.preventDefault();
+    event.preventDefault()
 
-  // Gerando ID unico do usuário.
-  user.id = crypto.randomUUID();
+    user.id = crypto.randomUUID()
+    user.name = loginInput.value
+    user.color = getRandomColor()
 
-  user.name = loginInput.value;
+    login.style.display = "none"
+    chat.style.display = "flex"
 
-  // Gerando uma cor aleatoria do array pro usuário
-  user.color = getRandomColor();
+    websocket = new WebSocket("ws://localhost:8080")
+    websocket = new WebSocket("wss://chat-api-9wq0.onrender.com")
+    websocket.onmessage = processMessage
+}
 
-  // Ocultando o Login
-  login.style.display = "none";
-  chat.style.display = "flex";
-
-  // Criando uma conexão
-  websocket = new WebSocket("ws://localhost:8080");
-
-  // Sempre que o nosso servidor enviar uma mensagem pra gente, vai executar a função processMessage
-  websocket.onmessage = processMessage;
-};
-
-// Enviando uma messagem pro servidor
 const sendMessage = (event) => {
-  event.preventDefault();
+    event.preventDefault()
 
-  // Objeto
-  const message = {
-    userId: user.id,
-    userName: user.name,
-    userColor: user.color,
+    const message = {
+        userId: user.id,
+        userName: user.name,
+        userColor: user.color,
+        content: chatInput.value
+    }
 
-    // Conteudo da messagem
-    content: chatInput.value,
-  };
+    websocket.send(JSON.stringify(message))
 
-  websocket.send(JSON.stringify(message));
+    chatInput.value = ""
+}
 
-  // Limpando input da messagem enviada pelo usuário.
-  chatInput.value = "";
-};
-
-loginForm.addEventListener("submit", handleLogin);
-chatForm.addEventListener("submit", sendMessage);
+loginForm.addEventListener("submit", handleLogin)
+chatForm.addEventListener("submit", sendMessage)
